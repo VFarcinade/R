@@ -1,0 +1,1484 @@
+---
+title: "Projet MCMC"
+author: "Maria Bastiani, Vincent Farcinade, Amanda Gobeau"
+output:
+  pdf_document:
+    extra_dependencies:
+      algorithm2e:
+      - ruled
+      - vlined
+      - linesnumbered
+      - english
+      amsmath: null
+      amsfonts: null
+      amssymb: null
+      bbold: null
+      multicol: null
+      stmaryrd: null
+      mathtools : null
+      bbm : null
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1 :
+
+Our initial model is defined by, for some $p \in [ 0,1]$, $\theta \in [ 0,1]$ :
+
+```{=tex}
+\begin{align*}
+&\mathbb{P}(X = AA) = p(1- \theta ) + (1-p)(1- \theta )^2 \\
+&\mathbb{P}(X = aa) = p \theta + (1-p) \theta ^2 \\
+&\mathbb{P}(X = aA) = 2 (1-p) \theta (1- \theta ) \\
+\end{align*}
+```
+By considering $Z \sim \mathcal{B}(p)$, we can write :
+
+```{=tex}
+\begin{align*}
+&\mathbb{P}(X = AA,Z = 1) = p(1- \theta ) \\
+&\mathbb{P}(X = AA, Z = 0) = (1-p)(1- \theta )^2 \\
+&\mathbb{P}(X = aa, Z = 1) = p \theta \\
+&\mathbb{P}(X = aa, Z = 0) = (1-p) \theta ^2 \\
+&\mathbb{P}(X = aA , Z = 1) = 0 \\
+&\mathbb{P}(X = aA, Z = 0) = 2 (1-p) \theta (1- \theta ) \\
+\end{align*}
+```
+Here, we only dispose of the allocation of the three alleles within the population, indeed the variable Z is not observed.
+
+Thus, this representation is a latent representation of our model, using a Bernouilli random variable of parameter $p$.
+
+## Question 2 :
+
+From now on, we denote $\eta = (p,\theta)$, and we consider $x = (x_1,\cdots, x_n)$ a sample of realizations of the variables $X_1,\cdots,X_n$ following the model defined in question 1 and $Z_1,\cdots,Z_n$ the associated latent variables, for $n\in \mathbb{N}$.
+
+The Expectation - Maximization algorithm is defined as follows :
+
+```{=tex}
+\begin{algorithm}[H]
+\caption{Expectation - Maximization Algorithm}
+\SetAlgoLined
+
+\SetKwInOut{Input}{Input}
+\Input{Initialization value $\eta^{(0)} \in \Theta$ and $T$ iterations.}
+
+\BlankLine
+\For{$t \in \llbracket1,T\rrbracket$}{ \textsc{Expectation step} : $Q\left(\eta;\eta^{(t)}\right) = \mathbb{E}_{\eta^{(t)}}\left[\ell\left(\eta\mid X,Z\right) \mid X = x\right] $\\
+\textsc{Maximization step} : $\eta^{(t+1)}=\underset{\eta}{\arg\max} \ Q\left(\eta;\eta^{(t)}\right)$\;
+
+    }
+
+
+\end{algorithm} 
+```
+Thus, for the first step, at a given iteration $t$, we want to compute :
+
+```{=tex}
+\begin{equation*}
+    \begin{split}
+Q\left(\eta;\eta^{(t)}\right) &= \mathbb{E}_{\eta^{(t)}}\left[\ell\left(\eta\mid X,Z\right) \mid X = x\right] \\
+&= \mathbb{E}_{\eta^{(t)}}\left[\sum_{i=1}^n  \mathbb{1}_{Z_i=1} \log\left\{\mathbb{P}(X_i = x_i,Z_i = 1)\right\} + \mathbb{1}_{Z_i=0} \log\left\{\mathbb{P}(X_i = x_i,Z_i = 0)\right\} \mid X_i = x_i\right]\\
+&= \sum_{i=1}^n  \log\left\{\mathbb{P}(X_i = x_i,Z_i = 1)\right\}\mathbb{P}_{\eta^{(t)}}(Z_i = 1 \mid X_i = x_i) +  \log\left\{\mathbb{P}(X_i = x_i,Z_i = 0)\right\}\mathbb{P}_{\eta^{(t)}}(Z_i = 0 \mid X_i = x_i)\\
+    \end{split}
+\end{equation*}
+```
+In our case,
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&\mathbb{P}(X_i = x_i,Z_i = 1) = p((1-\theta)\mathbb{1}_{x_i=AA}+\theta \mathbb{1}_{x_i = aa}) \\
+&\mathbb{P}(X_i = x_i,Z_i = 0) = (1-p)\left[(1-\theta)^2\right]^{\mathbb{1}_{x_i = AA}}\left[\theta^2\right]^{\mathbb{1}_{x_i = aa}}\left[2\theta(1-\theta)\right]^{\mathbb{1}_{x_i = aA}}
+\end{split}
+\end{equation*}
+```
+Moreover, we have
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&\mathbb{P}_{\eta^{(t)}}(Z_i = 1 \mid X_i = x_i) = \frac{\mathbb{P}(X_i = x_i,Z_i = 1)}{\mathbb{P}(X_i = x_i,Z_i = 1) + \mathbb{P}(X_i = x_i,Z_i = 0)} \\
+& \mathbb{P}_{\eta^{(t)}}(Z_i = 0 \mid X_i = x_i) = \frac{\mathbb{P}(X_i = x_i,Z_i = 0)}{\mathbb{P}(X_i = x_i,Z_i = 1) + \mathbb{P}(X_i = x_i,Z_i = 0)}
+\end{split}
+\end{equation*}
+```
+So :
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&\mathbb{P}_{\eta^{(t)}}(Z_i = 1 \mid X_i = AA ) = \frac{p^{(t)}(1-\theta^{(t)})}{p^{(t)}(1-\theta^{(t)}) + (1-p^{(t)})(1-\theta^{(t)})^2} := p_{AA,1}^{(t)} \\
+&\mathbb{P}_{\eta^{(t)}}(Z_i = 1 \mid X_i = aa ) = \frac{p^{(t)}\theta^{(t)}}{p^{(t)}\theta^{(t)} + (1-p^{(t)}){\theta^{(t)}}^2}:= p_{aa,1}^{(t)} \\
+&\mathbb{P}_{\eta^{(t)}}(Z_i = 1 \mid X_i = aA ) = 0 \\
+&\mathbb{P}_{\eta^{(t)}}(Z_i = 0 \mid X_i = AA ) = \frac{(1-p^{(t)})(1-\theta^{(t)})^2}{p^{(t)}(1-\theta^{(t)}) + (1-p^{(t)})(1-\theta^{(t)})^2} := p_{AA,0}^{(t)} \\
+&\mathbb{P}_{\eta^{(t)}}(Z_i = 0 \mid X_i = aa ) = \frac{(1-p^{(t)}){\theta^{(t)}}^2}{p^{(t)}\theta^{(t)} + (1-p^{(t)}){\theta^{(t)}}^2}:= p_{aa,0}^{(t)} \\
+&\mathbb{P}_{\eta^{(t)}}(Z_i = 0 \mid X_i = aA ) = 1 
+\end{split}
+\end{equation*}
+```
+By defining,
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&n_{AA} := \sum_{i=1}^n \mathbb{1}_{x_i=AA} \\
+&n_{aa} := \sum_{i=1}^n \mathbb{1}_{x_i=aa} \\
+&n_{aA} := \sum_{i=1}^n \mathbb{1}_{x_i=aA}
+\end{split}
+\end{equation*}
+```
+We finally have that :
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+Q\left(\eta;\eta^{(t)}\right) &= \sum_{i=1}^n  \log\left\{p((1-\theta)\mathbb{1}_{x_i=AA}+\theta \mathbb{1}_{x_i = aa})\right\}(p_{AA,1}^{(t)}\mathbb{1}_{x_i=AA} + p_{aa,1}^{(t)}\mathbb{1}_{x_i=aa}) \\ &\quad +   \log\left\{(1-p)\left[(1-\theta)^2\right]^{\mathbb{1}_{x_i = AA}}\left[\theta^2\right]^{\mathbb{1}_{x_i = aa}}\left[2\theta(1-\theta)\right]^{\mathbb{1}_{x_i = aA}}\right\}(p_{AA,0}^{(t)}\mathbb{1}_{x_i=AA} + p_{aa,0}^{(t)}\mathbb{1}_{x_i=aa}+\mathbb{1}_{x_i=aA})\\
+&= \sum_{i=1}^n (n_{AA}p_{AA,0}^{(t)}+n_{aa}p_{aa,0}^{(t)}+n_{aA})\log\left\{1-p\right\} \\ &\quad + 2n_{AA}p_{AA,0}^{(t)}\log\left\{1-\theta\right\} + 2n_{aa}p_{aa,0}^{(t)}\log\left\{\theta\right\} + n_{AA}\log\left\{2\theta(1-\theta)\right\} + n_{AA}p_{AA,1}^{(t)}\log\left\{p(1-\theta)\right\} \\ &\quad + n_{aa}p_{aa,1}^{(t)}\log\left\{p\theta\right\}\\
+&= (n_{AA}p{AA,0}^{(t)} + n_{aa}p_{aa,0}^{(t)} + n_{aA})\log\left\{1-p\right\} + (n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)})\log\left\{p\right\} \\ &\quad + (2n_{aa}p_{aa,0}^{(t)} + n_{aa} p_{aa,1}^{(t)} + n_{aA})\log\left\{\theta\right\} + (2n_{AA}p_{AA,0}^{(t)} + n_{AA}p_{AA,1}^{(t)} + n_{aA})\log\left\{1-\theta\right\} + n_{aA}\log\left\{2\right\} \\
+\end{split}
+\end{equation*}
+```
+For the second step, at a given iteration $t$, we want to compute :
+
+```{=tex}
+\begin{equation*}
+\eta^{(t+1)}=\underset{\eta}{\arg\max} \ Q\left(\eta;\eta^{(t)}\right)
+\end{equation*}
+```
+To do so, we are going to derivate $Q$ with respect to $p$ and $\theta$.
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&\frac{\delta Q}{\delta p}(\eta,\eta^{(t)}) = \frac{n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)}}{p}-\frac{n_{AA}p_{AA,O}^{(t)} + n_{aa}p_{aa,0}^{(t)} + n_{aA}}{1-p}\\
+&\frac{\delta Q}{\delta \theta}(\eta,\eta^{(t)}) = \frac{2n_{aa}p_{aa,0}^{(t)} + n_{aa} p_{aa,1}^{(t)} + n_{aA}}{\theta} - \frac{2n_{AA}p_{AA,0}^{(t)} + n_{AA}p_{AA,1}^{(t)} + n_{aA}}{1-\theta}
+\end{split}
+\end{equation*}
+```
+The derivate of $Q$ with respect to $p$ does not depend on $\theta$ and its derivate with respect to $\theta$ dos not depend on $p$. Consequently, we have :
+
+```{=tex}
+\begin{equation*}
+\eta^{(t+1)}=\underset{\eta}{\arg\max} \ Q\left(\eta;\eta^{(t)}\right) = (p^{(t+1)},\theta^{(t+1)})
+\end{equation*}
+```
+with
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&p^{(t+1)}=\underset{p}{\arg\max} \ Q\left(\eta;\eta^{(t)}\right) \\
+&\theta^{(t+1)}=\underset{\theta}{\arg\max} \ Q\left(\eta;\eta^{(t)}\right)
+\end{split}
+\end{equation*}
+```
+Moreover,
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&\frac{\delta^2 Q}{\delta p^2}(\eta,\eta^{(t)}) = -\frac{n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)}}{p^2}-\frac{n_{AA}p_{AA,O}^{(t)} + n_{aa}p_{aa,0}^{(t)} + n_{aA}}{(1-p)^2} \leq 0 \\
+&\frac{\delta^2 Q}{\delta \theta^2}(\eta,\eta^{(t)}) = -\frac{2n_{aa}p_{aa,0}^{(t)} + n_{aa} p_{aa,1}^{(t)} + n_{aA}}{\theta^2} - \frac{2n_{AA}p_{AA,0}^{(t)} + n_{AA}p_{AA,1}^{(t)} + n_{aA}}{(1-\theta)^2} \leq 0
+\end{split}
+\end{equation*}
+```
+The function $Q$ is concave with respect to $p$ and $\theta$ so $p^{(t+1)}$ and $\theta^{(t+1)}$ are such that :
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&\frac{\delta Q}{\delta p}(p^{(t+1)},\theta,\eta^{(t)}) = 0 \\
+&\frac{\delta Q}{\delta \theta}(p,\theta^{(t+1)},\eta^{(t)}) = 0
+\end{split}
+\end{equation*}
+```
+On one hand we have :
+
+```{=tex}
+\begin{align*}
+\frac{\delta Q}{\delta p}(p^{(t+1)},\theta,\eta^{(t)}) = 0 \ &\Leftrightarrow \quad n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)} = p^{(t+1)}(n_{AA}p_{AA,0}^{(t)} + n_{aa}p_{aa,0}^{(t)} + n_{aA} + n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)}) \\
+&\Leftrightarrow \quad p^{(t+1)} = \frac{n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)}}{n_{AA}p_{AA,0}^{(t)} + n_{aa}p_{aa,0}^{(t)} + n_{aA} + n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)}}
+\end{align*}
+```
+Since $p_{AA,0}^{(t)} + p_{AA,1}^{(t)} = p_{aa,0}^{(t)} + p_{aa,1}^{(t)} = 1$ and $n_{AA} + n_{aa} + n_{aA} = n$, we finally obtain :
+
+```{=tex}
+\begin{equation*}
+p^{(t+1)} = \frac{n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)}}{n}
+\end{equation*}
+```
+On the other hand :
+
+```{=tex}
+\begin{align*}
+\frac{\delta Q}{\delta \theta}(p,\theta^{(t+1)},\eta^{(t)}) = 0 \ &\Leftrightarrow \quad 2n_{aa}p_{aa,0}^{(t)} + n_{aa} p_{aa,1}^{(t)} + n_{aA} = \theta^{(t+1)}(2n_{AA}p_{AA,0}^{(t)} + n_{AA}p_{AA,1}^{(t)} + n_{aA} 2n_{aa}p_{aa,0}^{(t)} + n_{aa} p_{aa,1}^{(t)} + n_{aA}) \\
+&\Leftrightarrow \quad \theta^{(t+1)} = \frac{2n_{aa}p_{aa,0}^{(t)} + n_{aa} p_{aa,1}^{(t)} + n_{aA}}{2n_{AA}p_{AA,0}^{(t)} + n_{AA}p_{AA,1}^{(t)} + n_{aA} 2n_{aa}p_{aa,0}^{(t)} + n_{aa} p_{aa,1}^{(t)} + n_{aA}} \\
+\end{align*}
+```
+Since $p_{AA,0}^{(t)} + p_{AA,1}^{(t)} = p_{aa,0}^{(t)} + p_{aa,1}^{(t)} = 1$ and $n_{AA} + n_{aa} + n_{aA} = n$, we finally obtain :
+
+```{=tex}
+\begin{equation*}
+\theta^{(t+1)} = \frac{(1 + p_{aa,0}^{(t)})n_{aa} + n_{aA}}{n + n_{aa}p_{aa,0}^{(t)} + n_{AA}p_{AA,0}^{(t)} + n_{aA}}
+\end{equation*}
+```
+To conclude, the updates for estimating $p$ and $\theta$ are given by :
+
+```{=tex}
+\begin{equation*}
+\begin{split}
+&p^{(t+1)} = \frac{n_{AA}p_{AA,1}^{(t)} + n_{aa}p_{aa,1}^{(t)}}{n} \\
+&\theta^{(t+1)} = \frac{(1 + p_{aa,0}^{(t)})n_{aa} + n_{aA}}{n + n_{aa}p_{aa,0}^{(t)} + n_{AA}p_{AA,0}^{(t)} + n_{aA}}
+\end{split}
+\end{equation*}
+```
+## Question 3 :
+
+We are now going to implement the corresponding EM algorithm, according to the updates for estimating $p$ and $\theta$, as found in the previous question.
+
+We first start by computing the log-likelihood of our initial model. It will be useful for our EM algorithm since we want our algorithm to stop when it reaches an approximate of the maximum log-likelihood estimator. Indeed, our algorithm will stop when the difference between the value of the log-likelihood evaluated with the parameter computed at the $(t+1)$-th iteration and the value of the log-likelihood evaluated with the parameter computed at the $(t)$-th iteration is less than $\epsilon$, for an $\epsilon$ chosen in advance.
+
+The log-likelihood of our model is defined as follow :
+
+```{=tex}
+\begin{equation*}
+\ell(p,\theta \mid x_1,\cdots,x_n) = n_{AA}\log\left\{\mathbb{P}(X = AA)\right\} + n_{aa}\log\left\{\mathbb{P}(X = aa)\right\} + n_{aA}\log\left\{\mathbb{P}(X = aA)\right\} 
+\end{equation*}
+```
+```{r,include=FALSE}
+log_likelihood <- function(x,p,theta){
+  p_AA <- p*(1-theta) + (1-p)*(1-theta)**2
+  p_aA <- 2*(1-p)*theta*(1-theta)
+  p_aa <-p*theta+(1-p)*theta**2
+  n_AA <- sum(x=="AA")
+  n_aa <- sum(x=="aa")
+  n_aA <- sum(x=="aA")
+  return(n_AA*log(p_AA)+n_aa*log(p_aa)+n_aA*log(p_aA))
+}
+```
+
+```{r,include=FALSE}
+est_EM <- function(x,n_em,epsilon,p_0, theta_0) {
+  
+  # initialization
+  n <- length(x)
+  p <- rep(0,n_em+1)
+  theta <- rep(0,n_em+1)
+  like <- rep(0,n_em)
+  p[1] <- p_0
+  theta[1] <- theta_0
+  like[1] <- log_likelihood(x,p[1],theta[1])
+  
+  n_AA <- sum(x=="AA")
+  n_aa <- sum(x=="aa")
+  n_aA <- sum(x=="aA")
+  
+  # Maximization
+  for (t in 1:n_em){
+    
+    
+    p_AA1 <- p[t]*(1-theta[t])/(p[t]*(1-theta[t])+(1-p[t])*(1-theta[t])**2)
+    p_AA0 <- (1-p[t])*(1-theta[t])**2/(p[t]*(1-theta[t])+(1-p[t])*(1-theta[t])**2)
+    p_aa1 <- p[t]*theta[t]/(p[t]*theta[t] + (1-p[t])*theta[t]**2)
+    p_aa0 <- (1-p[t])*theta[t]**2/(p[t]*theta[t] + (1-p[t])*theta[t]**2)
+
+    
+    p[t+1] <- (n_AA*p_AA1 + n_aa*p_aa1)/n
+    theta[t+1] <- ((1+p_aa0)*n_aa + n_aA)/(n + n_aa*p_aa0 + n_AA*p_AA0 + n_aA)
+    
+    like[t+1] <- log_likelihood(x,p[t+1],theta[t+1])
+    
+    if (abs(like[t+1]-like[t]) < epsilon) {
+      n_stop <- t
+      break}
+
+  }
+  return(list(p=p[1:n_stop], theta=theta[1:n_stop],like=like[1:n_stop]))
+}
+```
+
+We are now going to implement the EM algorithm and check graphically the convergence of our algorithm and the fit between the estimated model and the empirical distribution of the data.
+
+To do so, we compute the vector of observations $x_{obs}$, according to the table given in the instructions and initialize our parameters.
+
+For the initialization of our parameters, we choose $p^{(0)}=\frac{1}{2}, \theta^{(0)}=\frac{1}{2}$, $\epsilon=10^{-16}$ and 10000 iterations.
+
+```{r,include=FALSE}
+#vector of observations
+xobs<-c(rep("AA",302),rep("aa",125),rep("aA",73))
+
+#initialization of the parameters
+p_0 <- 1/2
+theta_0 <- 1/2
+n_iter <- 10000
+epsilon <- 1e-16
+
+out_EM <- est_EM(xobs, n_iter, epsilon, p_0, theta_0)
+```
+
+We obtain the following graphs :
+
+```{r,echo=FALSE, fig.show="hold", out.width="50%"}
+plot(out_EM$p,main="Convergence of p_hat, estimator of p", xlab="number of iterations",ylab="p_hat",panel.first = grid(),pch=20,col ='lightblue3',type='o',font.main=4,col.main="gray24",font.lab=3,col.lab="gray24")
+
+plot(out_EM$theta,main="Convergence of theta_hat, estimator of theta", xlab="number of iterations",ylab="theta_hat" ,panel.first = grid(),pch=20, col ='lightblue3',type='o',font.main=4,col.main="gray24",font.lab=3,col.lab="gray24")
+```
+
+We can see that our estimators of the parameter $p$ and $\theta$ converges respectively to 0.66 and 0.32. Our algorithm starts converging after approximately 10 iterations and stops after 40 iterations.
+
+```{r,echo=FALSE,figures-side, fig.show="hold", out.width="50%"}
+theta_star <- out_EM$theta[length(out_EM$theta)]
+p_star <- out_EM$p[length(out_EM$p)]
+theta_test <- seq(0,1,0.01)
+p_test <- seq(0,1,0.01)
+
+
+plot(theta_test, log_likelihood(xobs,p_star,theta_test),type='l',
+     xlab='theta_test',ylab="l(xobs,p*,theta_test)",xlim=c(0,1),panel.first = grid(),font.lab=3,col.lab="gray24",col="gray47")
+title(main=paste("Evolution of the log-vraisemblance","\n",sep=""),font.main=4,col.main="gray24")
+title(main=paste("\n","depending on theta_test",sep=""),font.main=4,col.main="gray24",)
+abline(v=theta_star,col='mediumpurple1',lwd=3, lty=2)
+abline(h=log_likelihood(xobs,p_star,theta_star),col='mediumvioletred',lwd=3, lty=2)
+legend(x="bottomright",legend=c("theta*","l(xobs,p*,theta*)"),lwd = 1,
+       col=c("mediumpurple1","mediumvioletred"),cex = 0.8,bg="white", lty=2)
+
+plot(p_test, log_likelihood(xobs,p_test,theta_star),type='l',
+     xlab='p_test',ylab="l(xobs,p_test,theta*)",xlim=c(0,1),panel.first = grid(),font.lab=3,col.lab="gray24",col="gray47")
+title(main=paste("Evolution of the log-vraisemblance","\n",sep=""),font.main=4,col.main="gray24")
+title(main=paste("\n","depending on p_test",sep=""),font.main=4,col.main="gray24")
+abline(v=p_star,col='mediumpurple1',lwd=3, lty=2)
+abline(h=log_likelihood(xobs,p_star,theta_star),col='mediumvioletred',lwd=3, lty=2)
+legend(x="bottomleft",legend=c("p*","l(xobs,p*,theta*)"),col=c("mediumpurple1","mediumvioletred"),lwd=1,cex = 0.8,bg="white", lty=2)
+
+```
+
+The estimators of $p$ and $\theta$ found at the last iteration correspond to the maximum of the log-likelihood of our initial model.
+
+## Question 4 :
+
+```{r, include=FALSE}
+source("MCMC_utils.R")
+set.seed(0)
+```
+
+We would like to sample from the posterior distribution of $(p,\theta)$ using the Metropolis-Hastings algorithm with a gaussian proposal density. Therefore, we will implement the Random Walk Metropolis-Hastings algorithm.
+
+At each iteration $t$, the $p$'s and $\theta$'s candidates are sampled from the following gaussian distributions ($\sigma_\theta$ et $\sigma_p$ are fixed) :
+
+```{=tex}
+\begin{equation*}
+\theta_{new}^{(t)} \sim \mathcal{N}(\theta^{(t-1)},\sigma_\theta)
+\end{equation*}
+```
+```{=tex}
+\begin{equation*}
+p_{new}^{(t)} \sim \mathcal{N}(p^{(t-1)},\sigma_p)
+\end{equation*}
+```
+#### Accept-reject function :
+
+We have the following formula : $\pi(p,\theta | x_{obs})=\pi(p,\theta)l(\theta,p|x_{obs})$, where $\pi(p,\theta)$ is the prior distribution of $(p,\theta)$ and $l(\theta,p|x_{obs})$ is the likelihood function of $(p,\theta)$.
+
+```{=tex}
+\begin{equation*}
+l(\theta,p|x_{obs})=(p(1-\theta)+(1-p)(1-\theta)^2))^{302}(2(1-p)\theta(1-\theta))^{73}(p\theta+(1-p)\theta^2)^{125}
+\end{equation*}
+```
+At each iteration $t$, we want to compute the report :
+
+```{=tex}
+\begin{equation*}
+\rho(p_{new},\theta_{new},p^{(t-1)},\theta^{(t-1)}):=\frac{\pi(p_{new},\theta_{new}|x_{obs})}{\pi(p^{(t-1)},\theta^{(t-1)}|x_{obs})}
+\end{equation*}
+```
+This can be simplified as follows :
+
+```{=tex}
+\begin{align*}
+\rho(p_{new},\theta_{new},p^{(t-1)},\theta^{(t-1)}) &= \frac{\pi(p_{new},\theta_{new})l(p_{new},\theta_{new}|x_{obs})}{\pi(p^{(t-1)},\theta^{(t-1)})l(p^{(t-1)},\theta^{(t-1)}|x_{obs})}\\
+&=\frac{\pi(p_{new},\theta_{new})}{\pi(p^{(t-1)},\theta^{(t-1)})}\frac{l(p_{new},\theta_{new}|x_{obs})}{l(p^{(t-1)},\theta^{(t-1)}|x_{obs})}\\
+\end{align*}
+```
+The report between the prior is implemented as follows :
+
+##### Beta prior :
+
+We assume that $\theta \sim Beta(\alpha_{\theta},\beta_{\theta})$ and $p \sim Beta(\alpha_{p},\beta_{p})$.
+
+Then :
+
+```{=tex}
+\begin{align*}
+\frac{\pi(p_{new},\theta_{new})}{\pi(p_{(t-1)},\theta_{(t-1)})} &= \frac{p_{new}^{\alpha_p-1}(1-p_{new})^{\beta_p-1}\theta_{new}^{\alpha_\theta-1}(1-\theta_{new})^{\beta_\theta-1}}
+{p_{(t-1)}^{\alpha_p-1}(1-p_{(t-1)})^{\beta_p-1}\theta_{(t-1)}^{\alpha_\theta-1}(1-\theta_{(t-1)})^{\beta_\theta-1}}\mathbb{I}_{[0,1]}(\theta_{new},p_{new},\theta_{(t-1)},p_{(t-1)})\\
+&=(\frac{p_{new}}{p_{(t-1)}})^{\alpha_p-1}(\frac{1-p_{new}}{1-p_{(t-1)}})^{\beta_p-1}(\frac{\theta_{new}}{\theta_{(t-1)}})^{\alpha_\theta-1}(\frac{1-\theta_{new}}{1-\theta_{(t-1)}})^{\beta_\theta-1}\mathbb{I}_{[0,1]}(\theta_{new},p_{new},\theta_{(t-1)},p_{(t-1)})
+\end{align*}
+```
+##### Uniform prior :
+
+We assume that $\theta \sim \mathcal{U}(0,1)$ et $p \sim \mathcal{U}(0,1)$.
+
+Then :
+
+```{=tex}
+\begin{equation*}
+\frac{\pi(p_{new},\theta_{new})}{\pi(p_{(t-1)},\theta_{(t-1)})} =\mathbb{I}_{[0,1]}(\theta_{new},p_{new},\theta_{(t-1)},p_{(t-1)})
+\end{equation*}
+```
+Following this, we can implement the accept-reject function.
+
+```{r,include=FALSE}
+rho <- function(theta_new,p_new,theta_current,p_current,prior,...){
+  temp = prior(theta_new,p_new,theta_current,p_current,...)
+  if(temp==0){
+    return (0)
+  }
+  AA = (p_new*(1-theta_new)+(1-p_new)*(1-theta_new)**2)/  
+    (p_current*(1-theta_current)+(1-p_current)*(1-theta_current)**2)
+  aa = (p_new*theta_new+(1-p_new)*theta_new**2)/  
+    (p_current*theta_current+(1-p_current)*theta_current**2)
+  aA = ((1-p_new)*theta_new*(1-theta_new))/  
+    ((1-p_current)*theta_current*(1-theta_current))
+  return((AA**302)*(aa**125)*(aA**73)*temp)
+}
+
+```
+
+#### Random Walk Metropolis-Hastings :
+
+Finally, we can implement the Random Walk Metropolis-Hastings algorithm and initialize our parameters.
+
+We will test our algorithm with the following parameters:
+
+-   Sample size : $n = 5 \times 10^5$
+
+-   Burn time : $nburn = 1000$
+
+-   Variance for the proposal law of theta : $\theta_{sd} = 0.2$
+
+-   Variance for the proposal law of p : $p_{sd} = 0.2$
+
+-   Initialization of the law of our parameters : $\theta_{init} \sim \mathcal{U}[0,1]$, $p_{init} \sim \mathcal{U}[0,1]$
+
+```{r,include=FALSE}
+#Paramèters 
+n = 5e5 #sample size
+nburn = 1000 #burn time 
+
+theta_sd <- 0.2 #variance for the proposal law of theta
+p_sd <- 0.2 #variance for the proposal law of tp 
+
+# Initialisation
+theta_init <- runif(1)
+p_init <- runif(1)
+```
+
+```{r,include=FALSE}
+mh <- function(n,nburn,theta_init,p_init, rho, prior,theta_sd,p_sd,...) {
+  N = n+nburn  
+  
+  # Initialisation
+  theta <- rep(0, N)
+  theta[1] <- theta_init
+  p <- rep(0, N)
+  p[1] <- p_init
+  
+  # Main loop
+  for (i in 2:N) {
+    # Sampling from gaussian distributions 
+    theta_new <- rnorm(1, theta[i - 1],theta_sd) 
+    p_new <- rnorm(1, p[i-1], p_sd) 
+    
+    #Accept-reject step  
+    if (runif(1) < rho(theta_new,p_new,theta[i-1],p[i-1],prior,...)) {
+      theta[i] <- theta_new
+      p[i] <- p_new
+    } else {
+      theta[i] <- theta[i - 1]
+      p[i] <- p[i - 1]
+    }
+  }
+  
+  #Output 
+  p = p[(nburn+1):N]
+  theta = theta[(nburn+1):N]
+  
+  return(matrix(c(theta,p),nrow=n))
+}
+```
+
+For the uniform prior, we obtain the following plots :
+
+```{r echo=FALSE,include=FALSE}
+#Metropolis- Hastings 
+mat_unif <- mh(n,nburn,theta_init,p_init, rho, prior_unif,theta_sd,p_sd)
+
+theta_unif <- mat_unif[,1]
+p_unif <- mat_unif[,2]
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+#Plots
+hist(theta_unif, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior", ylab = "Frequencies")
+
+hist(p_unif, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior ", ylab = "Frequencies")
+```
+
+For the Beta prior, ($\alpha_p=4,\beta_p=2,\alpha_{\theta}=2,\beta_{\theta}=4$), we obtain the following graphs :
+
+```{r echo=FALSE,include=FALSE}
+#Beta law parameters 
+a_p = 4
+b_p = 2 
+a_theta = 2 
+b_theta = 4
+
+#Metropolis- Hastings 
+mat_beta <- mh(n,nburn,theta_init,p_init, rho, prior_beta,theta_sd,p_sd,a_p,b_p,a_theta,b_theta)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+
+#Plots
+hist(theta_beta, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior ", ylab = "Frequencies")
+
+hist(p_beta, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior", ylab = "Frequencies")
+```
+
+We can observe how the \textit{posterior} distributions react as we change the parameters of the Beta \textit{prior} :
+
+```{r echo=FALSE,include=FALSE}
+#Metropolis- Hastings 
+mat_beta <- mh(n,nburn,theta_init,p_init, rho, prior_beta,theta_sd,p_sd,100,100,2,3)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+For the Beta prior, ($\alpha_p=100,\beta_p=100,\alpha_{\theta}=2,\beta_{\theta}=3$), we obtain the following graphs :
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+
+#Plots
+hist(theta_beta, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior ", ylab = "Frequencies")
+
+hist(p_beta, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior", ylab = "Frequencies")
+```
+
+```{r echo=FALSE,include=FALSE}
+#Metropolis- Hastings 
+mat_beta <- mh(n,nburn,theta_init,p_init, rho, prior_beta,theta_sd,p_sd,2,3,100,100)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+For the Beta prior, ($\alpha_p=2,\beta_p=3,\alpha_{\theta}=100,\beta_{\theta}=100$), we obtain the following graphs :
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+
+#Plots
+hist(theta_beta, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior ", ylab = "Frequencies")
+
+hist(p_beta, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior", ylab = "Frequencies")
+```
+
+```{r echo=FALSE,include=FALSE}
+#Metropolis- Hastings 
+mat_beta <- mh(n,nburn,theta_init,p_init, rho, prior_beta,theta_sd,p_sd,100,100,100,100)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+When decreasing the parameters of the Beta laws, we obtain distributions similar to when we used a prior uniform, which makes sense given that $Beta(0,0)$ is a uniform on $[0,1]$. If we increase the parameters, we do not notice any significant differences except for a slight shift in the value around which the distributions are centred.
+
+## Question 5 :
+
+Let's see how the method reacts when we change the variance of the proposal law :
+
+For a variance equal to 0.1, we obtain the following graphs :
+
+```{r,echo=FALSE,include=FALSE}
+#Metropolis- Hastings sd_p = sd_theta = 0.1
+mat_unif <- mh(n,nburn,theta_init,p_init, rho, prior_unif,0.1,0.1)
+
+theta_unif <- mat_unif[,1]
+p_unif <- mat_unif[,2]
+
+mat_beta <- mh(n,nburn,theta_init,p_init, rho, prior_beta,0.1,0.1,a_p,b_p,a_theta,b_theta)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+#Plots
+hist(theta_unif, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(p_unif, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(theta_beta, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Beta prior ", ylab = "Frequencies")
+
+hist(p_beta, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Beta prior ", ylab = "Frequencies")
+```
+
+For a variance equal to 0.5, we obtain the following graphs :
+
+```{r,echo=FALSE,include=FALSE}
+#Metropolis- Hastings sd_p =  sd_theta = 0.5
+mat_unif <- mh(n,nburn,theta_init,p_init, rho, prior_unif,0.5,0.5)
+
+theta_unif <- mat_unif[,1]
+p_unif <- mat_unif[,2]
+
+mat_beta <- mh(n,nburn,theta_init,p_init, rho, prior_beta,0.5,0.5,a_p,b_p,a_theta,b_theta)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+#Plots
+hist(theta_unif, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(p_unif, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(theta_beta, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Beta prior ", ylab = "Frequencies")
+
+hist(p_beta, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Beta prior ", ylab = "Frequencies")
+```
+
+For a variance equal to 2, we obtain the following graphs :
+
+```{r,echo=FALSE,include=FALSE}
+#Metropolis- Hastings sd_p =  sd_theta = 2 
+mat_unif<- mh(n,nburn,theta_init,p_init, rho, prior_unif,2,2)
+
+theta_unif <- mat_unif[,1]
+p_unif <- mat_unif[,2]
+
+mat_beta <- mh(n,nburn,theta_init,p_init, rho, prior_beta,2,2,a_p,b_p,a_theta,b_theta)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+#Plots
+hist(theta_unif, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(p_unif, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(theta_beta, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Beta prior ", ylab = "Frequencies")
+
+hist(p_beta, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Beta prior ", ylab = "Frequencies")
+```
+
+We can see that increasing or decreasing the variance of the proposal law reciprocally increases or decreases the variance of the sample of the target law obtained with the algorithm.
+
+## Question 6 :
+
+Using the latent representation from Question 1, we can compute the conditional distributions needed for the Gibbs sampler.
+
+#### Conditional distribution of $z | (x_{obs},p,\theta)$ :
+
+We have :
+
+```{=tex}
+\begin{align*}
+\mathbb{P}(Z_i = 1 | X_i = x_i, p , \theta) &= \frac{p(1-\theta)}{p(1-\theta)+(1-p)(1-\theta)^2} \quad \text{si}\quad x_i = AA\\
+&=\frac{p\theta}{p\theta+(1-p)\theta^2} \quad \text{si}\quad x_i = aa\\
+&= 0 \quad \text{si}\quad x_i = aA\\
+\end{align*}
+```
+```{=tex}
+\begin{align*}
+\mathbb{P}(Z_i = 0 | X_i = x_i, p , \theta) &= \frac{(1-p)(1-\theta)^2}{p(1-\theta)+(1-p)(1-\theta)2} \quad \text{si}\quad x_i = AA\\
+&=\frac{(1-p)\theta^2}{p\theta+(1-p)\theta^2} \quad \text{si} \quad x_i = aa\\
+&= 1 \quad \text{si}\quad x_i = aA\\
+\end{align*}
+```
+#### Conditionnal distribution of $(p,\theta) | (z,x_{obs})$ :
+
+We know that :
+
+```{=tex}
+\begin{equation*}
+\pi(p,\theta|z,x_{obs})=\pi(p,\theta)l(p,\theta|z,x_{obs})
+\end{equation*}
+```
+We can compute the likelihood, then by denoting :
+
+-   $N = \sum_{i=1}^n Z_i$
+
+-   $N_{aA} = \sum_{i=1}^n \mathbb{I}_{(x_{obs,i}=aA)}$
+
+-   $N_{aa}^1 = \sum_{i=1}^n \mathbb{I}_{(x_{obs,i}=aa, Z_i=1)}$
+
+-   $N_{AA}^1 = \sum_{i=1}^n \mathbb{I}_{(x_{obs,i}=AA, Z_i=1)}$
+
+-   $N_{aa}^0 = \sum_{i=1}^n \mathbb{I}_{(x_{obs,i}=aa, Z_i=0)}$
+
+-   $N_{AA}^0 = \sum_{i=1}^n \mathbb{I}_{(x_{obs,i}=AA, Z_i=0)}$
+
+We have :
+
+```{=tex}
+\begin{align*}
+l(p,\theta|z,x_{obs}) &= (p(1-\theta))^N{AA}^1((1-p)(1-theta^2))^N{AA}^0(p\theta)^N{aa}^1((1-p)\theta^2)^N{aa}^0(2(1-p)\theta(1-\theta))^N_{aA}\\
+&\propto p^N(1-p)^{n_{obs}-N}\theta^{N_{aa}^1+2N_{aa}^0+N_{aA}}(1-\theta)^{N_{AA}^1+2N_{AA}^0+N_{aA}}
+\end{align*}
+```
+##### Uniform prior :
+
+We suppose that $\theta \sim \mathcal{U}(0,1)$ et $p \sim \mathcal{U}(0,1)$.
+
+```{=tex}
+\begin{equation*} 
+\pi(p,\theta|z,x_{obs}) \propto p^N(1-p)^{n_{obs}-N}\theta^{N_{aa}^1+2N_{aa}^0+N_{aA}}(1-\theta)^{N_{AA}^1+2N_{AA}^0+N_{aA}}\mathbb{I}_{[0,1]}(p,\theta)
+\end{equation*}
+```
+We recognize the product between a $Beta(N+1,n_{obs}-N+1)$ and a $Beta(N_{aa}^1+2N_{aa}^0+N_{aA}+1,N_{AA}^1+2N_{AA}^0+N_{aA}+1)$.
+
+##### Beta prior :
+
+We suppose that $\theta \sim Beta(\alpha_{\theta},\beta_{\theta})$ et $p \sim Beta(\alpha_{p},\beta_{p})$.
+
+We have :
+
+```{=tex}
+\begin{equation*}
+\pi(p,\theta|z,x_{obs}) \propto p^{N-\alpha_p-1}(1-p)^{n_{obs}s-N+\beta_p-1}\theta^{N_{aa}^1+2N_{aa}^0+N_{aA}+\alpha_\theta-1}(1-\theta)^{N_{AA}^1+2N_{AA}^0+N_{aA}+\beta_\theta-1}\mathbb{I}_{[0,1]}(p,\theta)
+\end{equation*}
+```
+We recognize the product between a $Beta(N+\alpha_p,n_{obs}-N+\beta_p)$ and a $Beta(N_{aa}^1+2N_{aa}^0+N_{aA}+\alpha_\theta,N_{AA}^1+2N_{AA}^0+N_{aA}+\beta_\theta)$.
+
+## Question 7 :
+
+At each iteration $t$, we have the following updates :
+
+```{=tex}
+\begin{equation*}
+z^{(t)} \sim \pi(z|p^{(t-1)},\theta^{(t-1)},x_{obs}) \quad 
+(p^{(t)},\theta^{(t)}) \sim \pi(p^{(t-1)},\theta^{(t-1)}|z^{(t)},x_{obs})
+\end{equation*}
+```
+We can then compute the Gibbs Sampler and initialize our parameters.
+
+-   Sample size : $n=1000$
+
+-   Burn time : $nburn=300$
+
+-   Initialization of the law of our parameters : $\theta_{init} \sim \mathcal{U}[0,1]$, $p_{init} \sim \mathcal{U}[0,1]$
+
+-   Initialization of the vector z of size 500 : we sample each components of z from [0,1] according to the vector of probability $(p_{init},1-p_{init})$
+
+```{r,include=FALSE}
+#Paramètres 
+n = 1000 #taille de l'échantillon
+nburn = 300 #periode de chauffe
+
+
+# x_obs 
+x_obs = c(rep("AA",302),rep("aa",125), rep("aA",73))
+
+# Initialisation
+theta_init <- runif(1)
+p_init <- runif(1)
+z_init <- sample(0:1,500,replace=TRUE,prob=c(p_init,1-p_init))
+```
+
+```{r,include=FALSE}
+gibbs <- function(n,nburn,theta_init,p_init,z_init,x_obs,prior,a_p=1,b_p=1,a_theta=1,b_theta=1){
+  N = n+nburn
+  
+  #Initialisation
+  theta <- rep(0, N)
+  theta[1] <- theta_init
+  p <- rep(0, N)
+  p[1] <- p_init
+  z <- matrix(0, 500, N)
+  z[,1] <- z_init 
+  
+  #Main loop 
+  for (i in 2:N){
+    #Update of z 
+    z[,i] <- pcond_z(x_obs,p[i-1],theta[i-1])
+    #Updates of p and theta 
+    temp = pcond_p_theta(x_obs,z[,i],prior,a_p,b_p,a_theta,b_theta)
+    p[i]<- temp[1]
+    theta[i]<-temp[2]
+  }
+  #Output 
+  p = p[(nburn+1):N]
+  theta = theta[(nburn+1):N]
+  
+  return(matrix(c(theta,p),nrow=n))
+}
+```
+
+We obtain the following graphs :
+
+```{r,echo=FALSE,include=FALSE}
+#Metropolis- Hastings 
+mat_unif <- gibbs(n,nburn,theta_init,p_init,z_init,x_obs,"unif")
+
+theta_unif <- mat_unif[,1]
+p_unif <- mat_unif[,2]
+
+mat_beta <- gibbs(n,nburn,theta_init,p_init,z_init,x_obs,"beta",a_p,b_p,a_theta,b_theta)
+
+theta_beta <- mat_beta[,1]
+p_beta <- mat_beta[,2]
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+#Plots
+hist(theta_unif, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(p_unif, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Uniforme prior", ylab = "Frequencies")
+
+hist(theta_beta, freq = FALSE, breaks = 100,
+     col = "pink", border = "grey",
+     main = "Histogram of the theta's posterior - Beta prior ", ylab = "Frequencies")
+
+hist(p_beta, freq = FALSE, breaks = 100,
+     col = "purple", border = "grey",
+     main = "Histogram of the p's posterior - Beta prior ", ylab = "Frequencies")
+```
+
+## Question 8 :
+
+The histograms of the samples obtained with Metropolis-Hastings and Gibbs seem to be distributed according to the same law.
+
+We can also compare the evolution of the mean a posteriori :
+
+```{r, include=FALSE}
+pAA=302/500
+paa=125/500
+paA=73/500
+
+theta_emp=paa+0.5*paA
+p_emp=(paa-theta_emp^2)/(theta_emp*(1-theta_emp))
+```
+
+```{r,include=FALSE}
+# Paramèters 
+n=10**4
+nburn = 300
+precis=0.95
+```
+
+```{r, include=FALSE}
+
+n_ind=seq(1,n)
+
+# Algorithms
+# Uniform Prior 
+gibbs_unif=gibbs(n,nburn,theta_init,p_init,z_init,x_obs,"unif")
+theta_gibbs <- gibbs_unif[,1]
+p_gibbs <- gibbs_unif[,2]
+
+mh_unif=mh(n,nburn,theta_init,p_init, rho, prior_unif,0.1,0.1)
+theta_mh <- mh_unif[,1]
+p_mh <- mh_unif[,2]
+
+# Computation of the mean and variance 
+mean_p_gibbs = cumsum(p_gibbs)/n_ind
+var_p_gibbs = cumsum(p_gibbs^2)/n_ind - mean_p_gibbs^2
+ICu_p_gibbs = mean_p_gibbs+qnorm((1+precis)/2)*sqrt(var_p_gibbs/n_ind)
+ICl_p_gibbs = mean_p_gibbs+qnorm((1-precis)/2)*sqrt(var_p_gibbs/n_ind)
+
+mean_theta_gibbs = cumsum(theta_gibbs)/n_ind
+var_theta_gibbs = cumsum(theta_gibbs^2)/n_ind - mean_theta_gibbs^2
+ICu_theta_gibbs = mean_theta_gibbs+qnorm((1+precis)/2)*sqrt(var_theta_gibbs/n_ind)
+ICl_theta_gibbs = mean_theta_gibbs+qnorm((1-precis)/2)*sqrt(var_theta_gibbs/n_ind)
+
+mean_p_mh = cumsum(p_mh)/n_ind
+var_p_mh = cumsum(p_mh^2)/n_ind - mean_p_mh^2
+ICu_p_mh = mean_p_mh+qnorm((1+precis)/2)*sqrt(var_p_mh/n_ind)
+ICl_p_mh = mean_p_mh+qnorm((1-precis)/2)*sqrt(var_p_mh/n_ind)
+
+mean_theta_mh = cumsum(theta_mh)/n_ind
+var_theta_mh = cumsum(theta_mh^2)/n_ind - mean_theta_mh^2
+ICu_theta_mh = mean_theta_mh+qnorm((1+precis)/2)*sqrt(var_theta_mh/n_ind)
+ICl_theta_mh = mean_theta_mh+qnorm((1-precis)/2)*sqrt(var_theta_mh/n_ind)
+
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+#Plots
+
+plot(n_ind,mean_p_mh,type="l",col="blue",pch=18,main=paste("Mean of prior approximation of p - Uniform prior"), panel.first = grid(),  ylim=c(0.65,0.68), xlab="Number of random variables")
+lines(n_ind,ICu_p_mh,col="red",lwd=2)
+lines(n_ind,ICl_p_mh,col="red",lwd=2)
+abline(a=p_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - M-H","empirical p"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+plot(n_ind,mean_p_gibbs,type="l",col="blue",pch=18,main=paste("Mean of prior approximation of p - Uniform prior"), panel.first = grid(), ylim=c(0.65,0.68), xlab="Number of random variables")
+lines(n_ind,ICu_p_gibbs,col="red",lwd=2)
+lines(n_ind,ICl_p_gibbs,col="red",lwd=2)
+abline(a=p_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - Gibbs","empirical p"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+
+plot(n_ind,mean_theta_mh,type="l",col="blue",pch=18,main=paste("Mean of prior approximation of theta - Uniform prior"), panel.first = grid(), ylim=c(0.305,0.335), xlab="Number of random variables")
+lines(n_ind,ICu_theta_mh,col="red",lwd=2)
+lines(n_ind,ICl_theta_mh,col="red",lwd=2)
+abline(a=theta_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - M-H","empirical theta"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+plot(n_ind,mean_theta_gibbs,type="l",col="blue",pch=18,main=paste("Mean of prior approximation of theta - Uniform prior"), panel.first = grid(), ylim=c(0.305,0.335), xlab="Number of random variables")
+lines(n_ind,ICu_theta_gibbs,col="red",lwd=2)
+lines(n_ind,ICl_theta_gibbs,col="red",lwd=2)
+abline(a=theta_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - Gibbs","empirical theta"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+```
+
+```{r, include=FALSE}
+# Beta Prior 
+gibbs_beta <- gibbs(n,nburn,theta_init,p_init,z_init,x_obs,"beta",a_p,b_p,a_theta,b_theta)
+theta_gibbs <- gibbs_beta[,1]
+p_gibbs <- gibbs_beta[,2]
+
+mh_beta=    mh(n,nburn,theta_init,p_init, rho, prior_beta,0.1,0.1,a_p,b_p,a_theta,b_theta)
+theta_mh <- mh_beta[,1]
+p_mh <- mh_beta[,2]
+
+# Computation of the mean and variance 
+mean_p_gibbs = cumsum(p_gibbs)/n_ind
+var_p_gibbs = cumsum(p_gibbs^2)/n_ind - mean_p_gibbs^2
+ICu_p_gibbs = mean_p_gibbs+qnorm((1+precis)/2)*sqrt(var_p_gibbs/n_ind)
+ICl_p_gibbs = mean_p_gibbs+qnorm((1-precis)/2)*sqrt(var_p_gibbs/n_ind)
+
+mean_theta_gibbs = cumsum(theta_gibbs)/n_ind
+var_theta_gibbs = cumsum(theta_gibbs^2)/n_ind - mean_theta_gibbs^2
+ICu_theta_gibbs = mean_theta_gibbs+qnorm((1+precis)/2)*sqrt(var_theta_gibbs/n_ind)
+ICl_theta_gibbs = mean_theta_gibbs+qnorm((1-precis)/2)*sqrt(var_theta_gibbs/n_ind)
+
+mean_p_mh = cumsum(p_mh)/n_ind
+var_p_mh = cumsum(p_mh^2)/n_ind - mean_p_mh^2
+ICu_p_mh = mean_p_mh+qnorm((1+precis)/2)*sqrt(var_p_mh/n_ind)
+ICl_p_mh = mean_p_mh+qnorm((1-precis)/2)*sqrt(var_p_mh/n_ind)
+
+mean_theta_mh = cumsum(theta_mh)/n_ind
+var_theta_mh = cumsum(theta_mh^2)/n_ind - mean_theta_mh^2
+ICu_theta_mh = mean_theta_mh+qnorm((1+precis)/2)*sqrt(var_theta_mh/n_ind)
+ICl_theta_mh = mean_theta_mh+qnorm((1-precis)/2)*sqrt(var_theta_mh/n_ind)
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+#Plots
+
+plot(n_ind,mean_p_mh,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of p - Beta prior"), panel.first = grid(),  ylim=c(0.65,0.68), xlab="Number of random variables")
+lines(n_ind,ICu_p_mh,col="red",lwd=2)
+lines(n_ind,ICl_p_mh,col="red",lwd=2)
+abline(a=p_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - M-H","empirical p"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+plot(n_ind,mean_p_gibbs,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of p - Beta prior"), panel.first = grid(),  ylim=c(0.65,0.68), xlab="Number of random variables")
+lines(n_ind,ICu_p_gibbs,col="red",lwd=2)
+lines(n_ind,ICl_p_gibbs,col="red",lwd=2)
+abline(a=p_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - Gibbs","empirical p"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+plot(n_ind,mean_theta_mh,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of theta - Beta prior"), panel.first = grid(), ylim=c(0.305,0.335), xlab="Number of random variables")
+lines(n_ind,ICu_theta_mh,col="red",lwd=2)
+lines(n_ind,ICl_theta_mh,col="red",lwd=2)
+abline(a=theta_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - M-H","empirical theta"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+plot(n_ind,mean_theta_gibbs,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of theta - Beta prior"), panel.first = grid(), ylim=c(0.305,0.335), xlab="Number of random variables")
+lines(n_ind,ICu_theta_gibbs,col="red",lwd=2)
+lines(n_ind,ICl_theta_gibbs,col="red",lwd=2)
+abline(a=theta_emp,b=0)
+legend(x="topright", legend=c("Cvg mean - Gibbs","empirical theta"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+```
+
+It can be seen by comparing the evolution of the a posteriori means for samples generated by Metropolis-Hastings and Gibbs that overall Gibbs obtains better results although the difference is not obvious.
+
+Moreover, in our case, Gibbs is more advantageous because we could recognize the conditional distributions and sample according to them exactly.
+
+\newpage
+
+## Question 9 :
+
+```{r include=FALSE}
+source("ABC_utils.R")
+set.seed(1)
+```
+
+```{r include=FALSE}
+X=c(replicate(302,'AA'),replicate(125,'aa'),replicate(73,'aA'))
+n=length(X)
+
+pAA=302/n
+paa=125/n
+paA=73/n
+
+theta_star=paa+0.5*paA
+p_star=(paa-theta_star^2)/(theta_star*(1-theta_star))
+
+```
+
+To implement an ABC algorithm on our problem, we need to establish a summary statistic. This will allow us to compare our observed sample to the samples we will generate based on the parameters obtained from the priors.
+
+Our log-Likelihood is:
+
+```{=tex}
+\begin{align*}
+l(x|p,\theta) &= ln(p_{AA})\sum_{i=1}^{n} \mathbbm{1}_{x_i=AA} + ln(p_{aa})\sum_{i=1}^{n} \mathbbm{1}_{x_i=aa} + ln(p_{aA})\sum_{i=1}^{n} \mathbbm{1}_{x_i=aA}\\
+              &=ln(p_{AA})N_{AA} + ln(p_{aa})N_{aa} + ln(p_{aA})(n-N_{AA}-N_{aa})
+\end{align*}
+```
+Our likelihood is therefore entirely characterized by the statistics :
+
+$$
+\left \{
+\begin{array}{rcl}
+N_{AA} &=&\sum_{i=1}^{n} \mathbbm{1}_{x_i=AA} \\
+N_{aa} &=&\sum_{i=1}^{n} \mathbbm{1}_{x_i=aa}
+\end{array}
+\right.
+$$
+
+An iteration of the ABC algorithm will have the following form: \setlength{\algomargin}{1.5em} \RestyleAlgo{boxruled}
+
+```{=tex}
+\begin{algorithm}[ht]
+\label{algo::A2}
+\caption{ABC i-th iteration}
+\SetKwInOut{Input}{input}
+
+\Input{$\pi$, $(X_k^{obs})_{1\leq k\leq n}$, $\epsilon$}
+\vspace{0.25cm}
+
+$(p_i,\theta_i) \sim \pi$
+
+\vspace{0.25cm}
+
+$p_{AA,i}=p_i(1-\theta_i)+(1-p_i)(1-\theta_i)^2$
+
+$p_{aa,i}=p_i\theta_i+(1-p_i) \theta_i^2$
+
+$p_{aA,i}=1-p_{AA,i} - p_{aa,i}$
+
+\vspace{0.25cm}
+
+$(X^{new}_{i,k})_{1\leq k\leq n} \sim \mathcal{L}(p_{AA,i}, p_{aa,i}, p_{aA,i})$
+
+\vspace{0.25cm}
+
+$N_i^{new}:=(N_{AA,i}^{new},N_{aa,i}^{new})$
+
+\vspace{0.25cm} 
+
+\uIf{d$(N_i^{new},N^{obs}) \leq \epsilon$}{
+    \KwRet{$(p_i,\theta_i)$} \;
+}\Else{
+    \KwRet{$\emptyset$} \;
+}
+
+\end{algorithm}
+```
+We have two possibilities:\
+\_Decide in advance the number of iterations and our algorithm will return an approximation of a posterior sample with a size depending on the rejection rate\
+\_Decide on the desired sample size and run our algorithm until we have accepted the desired number of random variables\
+
+The problems associated with this choice will be discussed later.
+
+We will run our algorithm once with: $N=10^5$ iterations, uniform prior, the distance $L^2$ and $\epsilon=15$. The following distributions are obtained:
+
+```{r include=FALSE}
+abc=ABC(X,10**5,sample_prior_beta,15,l2_dist,1,1,1,1)
+
+p_abc=unlist(abc[1])
+theta_abc=unlist(abc[2])
+N_var_keep=unlist(abc[3])
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+hist(p_abc, freq = F, main = "Simulation of p with ABC",breaks = 10,
+     panel.first = grid(), col = heat.colors(10),xlim=c(0,1))
+hist(theta_abc, freq = F, main = "Simulation of theta with ABC",breaks = 10,
+     panel.first = grid(), col = heat.colors(10),xlim=c(0,1))
+
+```
+
+We will now study the impact of the size of the neighbourhood around which we will accept or not the parameters generated from the priors as an estimate of the posterior.
+
+```{r include=FALSE}
+N=10**4
+
+epsilon=seq(40,200,5)
+
+prob_keep=double(length(epsilon))
+
+p_mean=matrix(length(epsilon))
+p_var=matrix(length(epsilon))
+
+for (i in 1:length(epsilon)){
+  abc=ABC(X,N,sample_prior_beta,epsilon[i],l2_dist,1,1,1,1)
+  prob_keep[i]=unlist(abc[3])/N
+  p=unlist(abc[1])
+  p_mean[i]=mean(p)
+  p_var[i]=var(p)
+}
+
+```
+
+```{r echo=FALSE, out.width="50%",fig.align='center'}
+plot(epsilon,prob_keep,type="l",col="blue",pch=18,main=paste("Acceptance rate in function of epsilon ( N=",N,")"),
+     panel.first = grid(), ylab='Acceptance rate')
+
+```
+
+Naturally, the smaller the size of the neighborhood around $x_{obs}$, the more accurate our estimates will be. However, we must take into account the computational counterpart. Indeed, the more we reduce the size of the neighborhood, the more the probability that a prior is accepted is reduced (see graph above). Thus, there is a trade-off between the desired precision and the desired number of random variables.
+
+From a more theoretical point of view, we understand that the more epsilon increases, the more we will tend to accept the simulation priors. So when $\epsilon$ tends to $+\infty$, we will accept all our priors, and our estimate of the posterior will tend towards the prior.
+
+We can indeed observe this phenomenon on the graph below, where the means of our posteriors for the parameter p tend towards 0.5, the mean of a uniform [0,1], i.e., our prior.
+
+On the other hand, if we reduce epsilon to 0, we will only accept THE distribution satisfying the zero distance condition, so we will have switched to a frequentist method, i.e., the method of moments.
+
+```{r, echo=FALSE, out.width="70%", fig.align = 'center'}
+df <- data.frame(x=epsilon,y=p_mean,z=round(prob_keep,2))
+
+plot(df$x, df$y,main=paste("posterior's mean in function of epsilon ( N=",N,")"),panel.first = grid(),pch=20,
+     xlab='epsilon',ylab="mean")
+lines(epsilon,p_mean,type="l",col="blue",pch=18)
+abline(p_star,0,col="red")
+abline(0.5,0,col="green")
+
+#add labels to every point
+text(df$x, df$y+0.025, labels=df$z,cex=0.5)
+legend(x="topright",legend=c("Method of moments","Expectation of Unif(0,1)", "Mean ABC sample","Acceptance rate"),
+       col=c("red","green", "blue","black"), lty=c(1,1,1,NaN),pch=c(NaN,NaN,20,12), cex=0.8,
+       text.font=4, bg='lightblue')
+
+```
+
+So far, we have used uniform laws [0,1] for the priors of p and theta. Now we will use $Beta(\alpha,\beta)$, and study the sensitivity of our algorithms to $\alpha>0,\beta>0$.
+
+The ABC algorithm being a rejection algorithm which accepts priors only if they return distributions sufficiently close to our observed distribution, we will consider that the higher the frequency of acceptance of a prior, the more efficient this prior is.
+
+We therefore naturally deduce that the most efficient prior, for the parameter p for example, will be the beta law centered around $\bar{p_n}$ (estimation of p by the method of moments) and with the lowest variance. In practice, the second point is not necessarily desired, because if we go so far as to nullify the variance, we will lose the Bayesian character of the method and we will fall back on a frequentist method.
+
+To illustrate our previous assertion, we will represent the acceptance frequency of our ABC algorithms ($\epsilon =30$) for different couples ($\alpha, \beta$) such that $\mathbb{E}[Beta(\alpha,\beta)] = \dfrac{\alpha}{\alpha+\beta} = \bar{p_n}$.
+
+```{r include=FALSE}
+freq_unif=unlist(ABC(X,N,sample_prior_beta,30,l2_dist,1,1,1,1)[3])/N
+#-----------------------------------------------------------------------------
+a1=seq(0.001,15,0.5)
+b1=a1*(1-p_star)/p_star
+
+
+N_keep1=matrix(0,length(a1))
+
+for (i in 1:length(a1)){
+  abc=ABC(X,N,sample_prior_beta,30,l2_dist,a1[i],b1[i],1,1)
+  N_keep1[i]=unlist(abc[3])
+}
+ind_opti1=which(N_keep1 == max(N_keep1))
+#-----------------------------------------------------------------------------
+a2=seq(0.001,10,0.5)
+b2=a2*(1-theta_star)/theta_star
+
+
+N_keep2=matrix(0,length(a2))
+
+for (i in 1:length(a2)){
+  abc=ABC(X,N,sample_prior_beta,30,l2_dist,1,1,a2[i],b2[i])
+  N_keep2[i]=unlist(abc[3])
+}
+ind_opti2=which(N_keep2 == max(N_keep2))
+#-----------------------------------------------------------------------------
+
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+plot(a1,N_keep1/N,type="l",col="blue",pch=18,main="Acceptance rate in function of prior parameters for p",
+     panel.first = grid(), xlab="a: a/(a+b) = p", ylab="Acceptance rate" )
+abline(freq_unif,0,col="red")
+legend(x="topleft",legend=c("Prior: U([0,1])","Prior: B(a,a*p/(1-p)"), col=c("red","blue"), lty=c(1,1), cex=0.8, text.font=4, bg='lightblue')
+
+plot(a2,N_keep2/N,type="l",col="blue",pch=18,main="Acceptance rate in function of prior parameters for theta",
+     panel.first = grid(), xlab="a: a/(a+b) = theta", ylab="Acceptance rate" )
+abline(freq_unif,0,col="red")
+legend(x="topleft",legend=c("Prior: U([0,1])","Prior: B(a,a*p/(1-p)"), col=c("red","blue"), lty=c(1,1), cex=0.8, text.font=4, bg='lightblue')
+
+```
+
+We can see that, for the parameter p that, past $\alpha = 0.5,\ \beta=\alpha\frac{\bar{p_n}}{1-\bar{p_n}}$, all the couples $(\alpha,\beta)$ are more efficient than the couple $(\alpha,\beta)=(1,1)$ which corresponds to a $\mathcal{U}([0,1])$.
+
+\
+On the other hand, we observe a growth in terms of efficiency. Indeed, for $\beta:=\alpha\frac{\bar{p_n}}{1-\bar{p_n}}$, the variance of our beta priors are decreasing in $\alpha$, this corroborates our assertion: "The most efficient beta prior will be the one centred in $\bar{p_n}$ and with the lowest variance". The same tendency can be observed for theta.
+
+The distributions of the priors are relatively similar to those of our posterior estimates (observable on the first histogram of this section).
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+prior_p=rbeta(10^4,a1[ind_opti1],b1[ind_opti1])
+hist(prior_p, freq = F, main = "Prior of p maximizing acceptance frequency",breaks = 20,
+     panel.first = grid(), col = heat.colors(10),xlim=c(0,1))
+
+prior_theta=rbeta(10^4,a2[ind_opti2],b2[ind_opti2])
+hist(prior_theta, freq = F, main = "Prior of theta maximizing acceptance frequency",breaks = 30,
+     panel.first = grid(), col = heat.colors(10),xlim=c(0,1))
+
+```
+
+## Question 10 :
+
+Here, our distributions, contrary to the MCMC methods, do not depend solely on the choice of the prior. Indeed, it is the value of the parameter $\epsilon$ which will condition the variance of our law. It therefore seems delicate to compare the distributions, even using the same priors.
+
+Regarding the posterior means, we observe a convergence towards the right values for p and theta. As for the amplitude of the confidence interval, it is also determined by the value of $\epsilon$.
+
+```{r include=FALSE}
+N=10**5
+eps=12
+abc=ABC(X,N,sample_prior_beta,eps,l2_dist,1,1,1,1)
+precis=0.95
+
+p_abc=unlist(abc[1])
+theta_abc=unlist(abc[2])
+N_var_keep=unlist(abc[3])
+
+n_ind=seq(1,N_var_keep)
+
+mean_p = cumsum(p_abc)/n_ind
+var_p = cumsum(p_abc^2)/n_ind - mean_p^2
+
+ICu_p=mean_p+qnorm((1+precis)/2)*sqrt(var_p/n_ind)
+ICl_p=mean_p+qnorm((1-precis)/2)*sqrt(var_p/n_ind)
+
+mean_theta = cumsum(theta_abc)/n_ind
+var_theta = cumsum(theta_abc^2)/n_ind - mean_theta^2
+
+ICu_theta=mean_theta+qnorm((1+precis)/2)*sqrt(var_theta/n_ind)
+ICl_theta=mean_theta+qnorm((1-precis)/2)*sqrt(var_theta/n_ind)
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+plot(n_ind,mean_p,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of p ( eps=",eps,", prior: Unif)"), panel.first = grid(), ylim=c(0.65,0.68), xlab="Number of random variables")
+lines(n_ind,ICu_p,col="red",lwd=2)
+lines(n_ind,ICl_p,col="red",lwd=2)
+abline(a=p_star, b=0)
+
+legend(x="topright", legend=c("Cvg mean","IC 95%","empirical p"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+plot(n_ind,mean_theta,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of theta ( eps=",eps,", prior: Unif)"), panel.first = grid(), ylim=c(0.305,0.335), xlab="Number of random variables")
+lines(n_ind,ICu_theta,col="red",lwd=2)
+lines(n_ind,ICl_theta,col="red",lwd=2)
+abline(a=theta_star, b=0)
+
+legend(x="topright", legend=c("Cvg mean","IC 95%","empirical theta"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+```
+
+```{r include=FALSE}
+eps=12
+
+abc=ABC(X,N,sample_prior_beta,eps,l2_dist,tail(a1),tail(b1),tail(a2),tail(b2))
+
+p_abc=unlist(abc[1])
+theta_abc=unlist(abc[2])
+N_var_keep=unlist(abc[3])
+
+n_ind=seq(1,N_var_keep)
+
+mean_p = cumsum(p_abc)/n_ind
+var_p = cumsum(p_abc^2)/n_ind - mean_p^2
+
+ICu_p=mean_p+qnorm((1+precis)/2)*sqrt(var_p/n_ind)
+ICl_p=mean_p+qnorm((1-precis)/2)*sqrt(var_p/n_ind)
+
+mean_theta = cumsum(theta_abc)/n_ind
+var_theta = cumsum(theta_abc^2)/n_ind - mean_theta^2
+
+ICu_theta=mean_theta+qnorm((1+precis)/2)*sqrt(var_theta/n_ind)
+ICl_theta=mean_theta+qnorm((1-precis)/2)*sqrt(var_theta/n_ind)
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+plot(n_ind,mean_p,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of p ( eps=",eps,", prior: Beta*)"), panel.first = grid(), ylim=c(0.65,0.68), xlab="Number of random variables")
+lines(n_ind,ICu_p,col="red",lwd=2)
+lines(n_ind,ICl_p,col="red",lwd=2)
+abline(a=p_star, b=0)
+
+legend(x="topright", legend=c("Cvg mean","IC 95%","empirical p"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+
+plot(n_ind,mean_theta,type="l",col="blue",pch=18,main=paste("Mean of posterior approximation of theta ( eps=",eps,", prior: Beta*)"), panel.first = grid(), ylim=c(0.305,0.335), xlab="Number of random variables")
+lines(n_ind,ICu_theta,col="red",lwd=2)
+lines(n_ind,ICl_theta,col="red",lwd=2)
+abline(a=theta_star, b=0)
+
+legend(x="topright", legend=c("Cvg mean","IC 95%","empirical theta"),
+       col=c("blue","red","black"), cex=1,lty=1,lwd=2)
+```
+
+## Question 11 :
+
+The prior of the random variable representing the model will be a discrete uniform on {0,1}. As for the parameters associated with each model, they will be drawn from continuous uniforms on [0,1] in order not to favor any model.
+
+```{=tex}
+\setlength{\algomargin}{1.5em}
+\RestyleAlgo{boxruled}
+\begin{algorithm}[ht]
+\label{algo::A3}
+\caption{ABC model selection i-th iteration}
+\SetKwInOut{Input}{input}
+
+\Input{$(X_k^{obs})_{1\leq k\leq n}$, $\epsilon$}
+\vspace{0.25cm}
+
+$M_i\sim\mathcal{U}(\{1,2\})$
+
+\vspace{0.25cm}
+
+\uIf{$M_i$ = 1}{
+  $\theta_i \sim \mathcal{U}([0,1])$
+  
+  \vspace{0.25cm}
+  
+  $p_{AA,i}=(1-\theta_i)^2$
+
+  $p_{aa,i}=\theta_i^2$
+  
+  $p_{aA,i}=1 - p_{AA,i} - p_{aa,i}$
+}\Else{    
+  $(p_i,\theta_i) \sim \mathcal{U}^2([0,1])$
+  
+  \vspace{0.25cm}
+
+  $p_{AA,i}=p_i(1-\theta_i)+(1-p_i)(1-\theta_i)^2$
+
+  $p_{aa,i}=p_i\theta_i+(1-p_i) \theta_i^2$
+  
+  $p_{aA,i}=1 - p_{AA,i} - p_{aa,i}$
+}
+  
+\vspace{0.25cm}
+
+$(X^{new}_{i,k})_{1\leq k\leq n} \sim \mathcal{L}(p_{AA,i}, p_{aa,i}, p_{aA,i})$
+
+\vspace{0.25cm}
+
+$N_i^{new}:=(N_{AA,i}^{new},N_{aa,i}^{new})$
+
+\vspace{0.25cm} 
+
+\uIf{d$(N_i^{new},N^{obs}) \leq \epsilon$}{
+    \KwRet{$M_i$} \;
+}\Else{
+    \KwRet{$\emptyset$} \;
+}
+
+\end{algorithm}
+```
+We perform $10^4$ iterations and vary $\epsilon$:
+
+```{r include=FALSE}
+N=10**4
+
+epsilon=seq(25,200,5)
+
+model=double(length(epsilon))
+N_model1=double(length(epsilon))
+N_model2=double(length(epsilon))
+
+for (i in 1:length(epsilon)){
+abc_model = ABC_model_selec(X,N,sample_prior_beta,epsilon[i],l2_dist)
+  result=unlist(abc_model[1])
+  model[i]=mean(result)
+  N_model1[i]=sum(result == 0)
+  N_model2[i]=sum(result == 1)
+}
+
+```
+
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+plot(epsilon[0:16], N_model2[0:16],main=paste("Number of 1 and 2 variables models selected"),panel.first = grid(),pch=20,
+     xlab='epsilon',ylab="Number of selected prior",type="l",col='blue',lwd=2,ylim=c(0,max(N_model2[0:16])))
+lines(epsilon[0:16],N_model1[0:16],type="l",col='red',lwd=2)
+legend(x="topleft",legend=c("Model 2","Model 1"),col=c("blue","red"), 
+       lty=c(1,1), cex=0.8, text.font=4, bg='lightblue',lwd=c(2,2))
+
+plot(epsilon, model,main=paste("Model 1 Variable VS Model 2 Variables"),panel.first = grid(),pch=20,
+     xlab='epsilon',ylab="frequency",ylim=c(0,1),type="l",col='blue',lwd=2)
+lines(epsilon,1-model,type="l",col='red',lwd=2)
+legend(x="topright",legend=c("Model 2","Model 1"),
+       col=c("blue","red"), lty=c(1,1), cex=0.8,
+       text.font=4, bg='lightblue',lwd=c(2,2))
+abline(0.5,0)
+```
+
+For a precision of $\epsilon=20$, it can be seen that no 1-variable model was selected, whereas about 100 2-variable models were selected. It was therefore reasonable to have considered this 2-variables model. It will be necessary to increase the tolerance to $\epsilon=85$, in order to observe 1-variable models being selected.
